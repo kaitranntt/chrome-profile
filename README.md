@@ -190,6 +190,38 @@ More in [`references/troubleshooting.md`](references/troubleshooting.md).
 
 ---
 
+## Update
+
+The skill has two install layers — both have deterministic update commands:
+
+```bash
+# Layer 1: skill files (pulls the latest from this repo's default branch)
+npx skills update chrome-profile-cdp
+
+# Layer 2: the chrome-profile shim on PATH (regenerates the shim, idempotent)
+bash ~/.claude/skills/chrome-profile-cdp/scripts/install.sh           # macOS / Linux
+"%USERPROFILE%\.agents\skills\chrome-profile-cdp\scripts\install.cmd" :: Windows
+```
+
+Re-running `install.sh` / `install.cmd` is idempotent — safe any time, no flags needed. Your `profiles.json` is preserved across updates (it lives outside the skill dir, or is .gitignored if inside).
+
+## Uninstall
+
+Deterministic teardown is two steps (mirrors install):
+
+```bash
+# Step 1: remove the chrome-profile shim from PATH
+bash ~/.claude/skills/chrome-profile-cdp/scripts/uninstall.sh         # macOS / Linux
+"%USERPROFILE%\.agents\skills\chrome-profile-cdp\scripts\uninstall.cmd" :: Windows
+
+# Step 2: remove the skill files
+npx skills remove chrome-profile-cdp
+```
+
+By default the uninstall scripts preserve your `profiles.json` so reinstalling later restores your key mappings. Pass `--purge` (Unix) / `/purge` (Windows) to wipe the config too.
+
+Nothing else is touched — no Chrome data, no cookies, no profiles. The skill only ever wrote two locations (the shim and the optional `~/.config/chrome-profile-cdp/`), both of which the uninstall script knows about.
+
 ## Development
 
 ```bash
