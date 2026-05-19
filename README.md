@@ -105,7 +105,7 @@ The skill reads `profiles.json` from one of two locations (first found wins):
 1. `$XDG_CONFIG_HOME/chrome-profile-cdp/profiles.json` (per-machine override, defaults to `~/.config/chrome-profile-cdp/profiles.json`)
 2. `<skill-dir>/profiles.json` (shared, ships with the skill)
 
-`chrome-profile setup` writes to the skill-shared file by default. Pass `--local` to write to the per-machine override instead.
+`chrome-profile setup` writes to the per-machine config (`$XDG_CONFIG_HOME/chrome-profile-cdp/profiles.json`) by default — this survives `npx skills update`. Pass `--shared` to write inside the skill directory instead (useful only when you fork this repo and manage `profiles.json` via your own sync setup; otherwise the next `npx skills update` will wipe it).
 
 A minimal `profiles.json`:
 
@@ -137,7 +137,7 @@ See [`profiles.example.json`](profiles.example.json) for a starter.
 chrome-profile <key> <url>     Open URL in the profile named <key>
 chrome-profile setup           Interactive: discover profiles and write profiles.json
 chrome-profile setup --yes     Non-interactive: accept all auto-derived keys
-chrome-profile setup --local   Write to per-machine override instead of skill-shared file
+chrome-profile setup --shared  Write inside skill dir (NOT recommended; wiped by npx skills update)
 chrome-profile list            Show configured keys and what they resolve to on this machine
 chrome-profile discover        Show all Chrome profiles on this machine (no config needed)
 ```

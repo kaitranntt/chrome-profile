@@ -210,7 +210,10 @@ def cmd_setup(args) -> None:
     if not cache:
         sys.exit("chrome-profile: no profiles found in Local State")
 
-    target = LOCAL_CONFIG if args.local else SKILL_CONFIG
+    # Default: per-machine config (survives `npx skills update`).
+    # --shared writes inside the skill dir; useful only when you control the skill
+    # source (e.g. a forked repo or a personal sync setup).
+    target = SKILL_CONFIG if args.shared else LOCAL_CONFIG
 
     existing = {}
     if target.exists():
@@ -293,9 +296,9 @@ def main(argv=None) -> None:
     p_setup.add_argument("--yes", "-y", action="store_true", help="accept all auto-derived keys")
     p_setup.add_argument("--non-interactive", action="store_true")
     p_setup.add_argument(
-        "--local",
+        "--shared",
         action="store_true",
-        help=f"write to {LOCAL_CONFIG} (per-machine override) instead of shared profiles.json",
+        help=f"write to {SKILL_CONFIG} (shared with the skill) instead of the per-machine config. WARNING: `npx skills update` overwrites the skill dir, which wipes a shared profiles.json. Prefer the default (per-machine) location unless you fork this repo.",
     )
     p_setup.set_defaults(func=cmd_setup)
 
