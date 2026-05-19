@@ -2,159 +2,95 @@
 
 > Deterministic per-profile Chrome control for AI agents driving the browser through [chrome-devtools-mcp](https://github.com/ChromeDevTools/chrome-devtools-mcp).
 
-An [Agent Skill](https://agentskills.io) that gives your AI agent a missing primitive: **"open this URL in my work profile"** — not "Profile 17" (which differs per machine), not "the profile that happens to have GitHub open" (which is brittle), but the profile bound to a known Google account email. Then the agent finds that tab unambiguously via a URL anchor and drives it through `chrome-devtools-mcp`'s normal tools.
+An [Agent Skill](https://agentskills.io) that lets you tell an AI agent **"open this URL in my work profile"** and have it actually land in the right profile — addressed by Google account email, not by brittle `Profile 17`-style directory numbers. Works on macOS, Linux, Windows. One Chrome process. Real cookies, real fingerprint, real you.
 
-Works on macOS, Linux, and Windows. One Chrome process. No copy-profile hacks. No multi-port multi-MCP gymnastics. Real cookies, real fingerprint, real you.
+## How it works
 
----
+`chrome-devtools-mcp` sees every tab across every Chrome profile as one flat list, with no profile labels. This skill bridges the gap:
 
-## Why this exists
+1. The CLI uses Chrome's native `--profile-directory` IPC to ask your running Chrome to open a URL in a specific profile.
+2. It appends a `#cdp-profile=<key>` fragment to the URL so the agent can locate the new tab unambiguously via `list_pages`.
+3. Profile keys map to **emails** (or display-name substrings) and resolve to the local `Profile XX` dir at every call by reading `Local State` — so the same config works on any machine.
 
-When `chrome-devtools-mcp` attaches to your real Chrome, it sees the whole browser — every tab in every profile, flat-listed. The Chrome DevTools Protocol exposes `browserContextId` per tab, but the MCP doesn't surface it. So from the agent's view, profiles are invisible.
-
-Two patterns people commonly try, and why they fail:
-
-| Attempt | Failure mode |
-|---|---|
-| Copy a profile to `/tmp` and launch a separate Chrome | On macOS, cookies are encrypted with a key bound to the original user-data-dir path. Bytes copy fine; decryption fails silently. Logins gone. |
-| Spawn N Chrome processes on N debug ports | Works, but abandons your already-signed-in profiles. Re-login per profile. Plus you now run an extra Chrome alongside your daily Chrome. |
-
-This skill takes a different route: **Chromium's `--profile-directory` IPC.** When you invoke `Chrome --profile-directory="Profile X"` against an already-running Chrome, the second binary detects the `SingletonLock`, messages the running Chrome over IPC, and the existing Chrome opens a tab in profile X. That tab appears in the same CDP connection your MCP already uses. To make the tab uniquely identifiable to the agent, the skill appends a `#cdp-profile=<key>` fragment to the URL. The agent matches the fragment in `list_pages`.
-
-Profiles are addressed by **Google account email** (or display-name substring), never by `Profile XX` directory number — because directory numbers are assigned in creation order and differ per machine.
-
-See [`references/architecture.md`](references/architecture.md) for the full why.
-
----
+Full architecture: [`references/architecture.md`](references/architecture.md).
 
 ## Prerequisites
 
-- Google Chrome (stable channel, version 144+). The skill works on macOS, Linux, Windows.
-- Python 3.9 or newer on PATH (`python3 --version`).
-- Node.js + `npx` on PATH (used by the next item).
-- [`chrome-devtools-mcp`](https://github.com/ChromeDevTools/chrome-devtools-mcp) configured in your AI-agent client (Claude Code, Codex, Cursor, etc.). See below — this skill assumes the MCP is already wired up; it does NOT configure it for you.
-- `$HOME/.local/bin` on PATH (Unix) or `%USERPROFILE%\.local\bin` (Windows). Or set `PREFIX=/some/path` when running the installer.
+| Required | Check with |
+|---|---|
+| Google Chrome stable, version 144+ | `chrome --version` |
+| Python 3.9+ on PATH | `python3 --version` |
+| Node.js + `npx` on PATH | `npx --version` |
+| `chrome-devtools-mcp` configured in your agent (Claude Code / Codex / Cursor / etc.) | see below |
+| `~/.local/bin` (Unix) or `%USERPROFILE%\.local\bin` (Windows) on PATH | or set `PREFIX=...` |
 
-The skill does NOT bundle Chrome, does NOT manage your `chrome-devtools-mcp` configuration, and does NOT touch your existing profiles' data.
+The skill does NOT bundle Chrome, manage `chrome-devtools-mcp`, or touch profile data.
 
-### Setting up `chrome-devtools-mcp`
-
-The skill's runtime workflow assumes your agent can call `chrome-devtools-mcp` tools (`list_pages`, `select_page`, `evaluate_script`, etc.) against your live Chrome. Pick the snippet for your client:
+### Set up `chrome-devtools-mcp` in your agent
 
 **Claude Code:**
 ```bash
 claude mcp add -s user chrome-devtools npx -- chrome-devtools-mcp@latest --autoConnect --channel=stable
-claude mcp get chrome-devtools     # verify Status: Connected
 ```
 
 **Codex CLI:**
 ```bash
 codex mcp add chrome-devtools -- npx chrome-devtools-mcp@latest --autoConnect --channel=stable
-codex mcp list                     # verify chrome-devtools is enabled
 ```
 
-**Cursor / other MCP clients:** add an `mcpServers` entry equivalent to:
+**Cursor / other clients** — equivalent JSON in `mcp.json`:
 ```json
-{
-  "mcpServers": {
-    "chrome-devtools": {
-      "command": "npx",
-      "args": ["chrome-devtools-mcp@latest", "--autoConnect", "--channel=stable"]
-    }
-  }
-}
+{ "mcpServers": { "chrome-devtools": {
+  "command": "npx",
+  "args": ["chrome-devtools-mcp@latest", "--autoConnect", "--channel=stable"]
+}}}
 ```
 
-The `--autoConnect` flag attaches to your **running** Chrome (144+). It needs TWO one-time things from you the first time:
+`--autoConnect` needs two one-time gates from you:
 
-1. **Enable the remote-debugging server inside Chrome** (this is a Chrome-side switch, NOT a flag):
+1. In Chrome, open `chrome://inspect/#remote-debugging` and toggle the remote-debugging server on. Without this the MCP has nothing to attach to.
+2. The first agent call to `chrome-devtools-mcp` triggers a Chrome **"Allow remote debugging"** prompt. Click **Allow** (or **Always Allow** for persistence).
 
-   1. Open Chrome.
-   2. Go to `chrome://inspect/#remote-debugging` (paste into address bar).
-   3. Toggle on the option to enable remote debugging on the running Chrome instance.
-
-   Without this, `--autoConnect` has nothing to attach to and the MCP will fail to find Chrome.
-
-2. **Approve the agent's first request via the "Allow remote debugging" prompt.**
-
-   The first time your agent (Claude Code / Codex / etc.) actually calls a `chrome-devtools-mcp` tool, Chrome pops a modal asking you to allow this specific debugging session. Click **Allow** (or **Always Allow** for persistence). Future agent invocations skip the prompt if you chose Always Allow.
-
-After both gates are passed once, your manual Chrome use and the agent's CDP access live side-by-side in the same Chrome process — no second Chrome, no debug port to manage, no copy-profile gymnastics.
-
-> Note: if you'd rather attach by an explicit debug-port URL (instead of `--autoConnect`), launch Chrome with `--remote-debugging-port=9222 --user-data-dir=<a-non-default-dir>` and configure the MCP with `--browserUrl http://127.0.0.1:9222`. Chrome 136+ blocks `--remote-debugging-port` against the default user-data-dir, so `--autoConnect` is the smoother path for everyday use.
-
----
+> Alternative: explicit `--browserUrl http://127.0.0.1:9222` against a Chrome you launched with `--remote-debugging-port=9222 --user-data-dir=<non-default>`. Chrome 136+ blocks `--remote-debugging-port` against the default user-data-dir, so `--autoConnect` is smoother for everyday use.
 
 ## Install
 
-### Via `npx skills add` (recommended)
+```bash
+# Recommended
+npx skills add kaitranntt/chrome-profile
+
+# Install the CLI shim onto PATH
+bash ~/.claude/skills/chrome-profile/scripts/install.sh                    # macOS / Linux
+"%USERPROFILE%\.agents\skills\chrome-profile\scripts\install.cmd"          :: Windows
+```
+
+Manual: `git clone https://github.com/kaitranntt/chrome-profile ~/.claude/skills/chrome-profile && bash ~/.claude/skills/chrome-profile/scripts/install.sh`.
+
+## Use
 
 ```bash
-npx skills add <owner>/<this-repo>
+chrome-profile discover            # list all Chrome profiles on this machine
+chrome-profile setup               # interactive: pick keys, write profiles.json
+chrome-profile setup --yes         # non-interactive: auto-derive all keys
+chrome-profile list                # show keys and what they resolve to here
+chrome-profile <key> <url>         # open URL in the profile named <key>
 ```
 
-This installs the skill into the standard Agent-Skills directory for your client (Claude Code: `~/.claude/skills/chrome-profile/`).
-
-After install, run the bundled installer to put the `chrome-profile` CLI on `$PATH`:
-
-```bash
-# macOS / Linux
-bash ~/.claude/skills/chrome-profile/scripts/install.sh
-```
-
-```cmd
-:: Windows (cmd.exe or PowerShell)
-"%USERPROFILE%\.agents\skills\chrome-profile\scripts\install.cmd"
-```
-
-On Windows the shim lands in `%USERPROFILE%\.local\bin\`. If that's not on PATH yet, the installer prints the `setx` command to add it (run once, then reopen the terminal).
-
-### Manual
-
-```bash
-git clone https://github.com/<owner>/<this-repo> ~/.claude/skills/chrome-profile
-bash ~/.claude/skills/chrome-profile/scripts/install.sh
-```
-
----
-
-## Quick start
-
-```bash
-# 1. Discover what profiles you have
-chrome-profile discover
-
-# 2. Generate a profile-key → email mapping (interactive, edits a profiles.json)
-chrome-profile setup
-
-# 3. List your configured keys (verify each resolves on this machine)
-chrome-profile list
-
-# 4. Open a URL in a specific profile
-chrome-profile work "https://github.com/your-org/repo/pulls"
-```
-
-After step 4, the agent driving Chrome through `chrome-devtools-mcp` finds the tab like this:
+Once a tab is open via `chrome-profile <key> <url>`, your agent finds and drives it:
 
 ```text
-1. Call list_pages
-2. Find the tab whose URL contains "cdp-profile=work"
-3. Call select_page with that pageId
-4. Run evaluate_script / navigate_page / click — all in the work profile's context.
+1. list_pages → match the tab whose URL contains "cdp-profile=<key>"
+2. select_page on that pageId
+3. evaluate_script / navigate_page / click — all in that profile's CDP context,
+   with that profile's cookies, logins, and extensions.
 ```
 
----
+## Config
 
-## Configuration
+`profiles.json` lookup order (first found wins):
 
-The skill reads `profiles.json` from one of two locations (first found wins):
-
-1. `$XDG_CONFIG_HOME/chrome-profile/profiles.json` (per-machine override, defaults to `~/.config/chrome-profile/profiles.json`)
-2. `<skill-dir>/profiles.json` (shared, ships with the skill)
-
-`chrome-profile setup` writes to the per-machine config (`$XDG_CONFIG_HOME/chrome-profile/profiles.json`) by default — this survives `npx skills update`. Pass `--shared` to write inside the skill directory instead (useful only when you fork this repo and manage `profiles.json` via your own sync setup; otherwise the next `npx skills update` will wipe it).
-
-A minimal `profiles.json`:
+1. `$XDG_CONFIG_HOME/chrome-profile/profiles.json` *(default for `setup`; survives `npx skills update`)*
+2. `<skill-dir>/profiles.json` *(only via `setup --shared`; wiped by `npx skills update` — don't use this unless you fork the repo)*
 
 ```json
 {
@@ -166,133 +102,52 @@ A minimal `profiles.json`:
 }
 ```
 
-Spec types (in priority order):
+Spec types, in priority order:
 
-| Spec | Use when |
-|---|---|
-| `{"email": "x@y.z"}` | Profile has a Google account signed in. Exact match on `info_cache.<dir>.user_name` in Chrome's Local State. Most portable. |
-| `{"name_contains": "substring"}` | Profile has no signed-in account but its display name is distinctive. Case-insensitive substring match. |
-| `{"dir": "Profile 17"}` | Escape hatch. NOT portable across machines — directory numbers are assigned in profile-creation order. |
+| Spec | Use when | Portable? |
+|---|---|---|
+| `{"email": "x@y.z"}` | Profile has a Google account signed in | ✅ |
+| `{"name_contains": "substring"}` | Profile has a distinctive display name | ✅ |
+| `{"dir": "Profile 17"}` | Last-resort escape hatch | ❌ |
 
-See [`profiles.example.json`](profiles.example.json) for a starter.
+`Profile XX` directory numbers are assigned per-machine in creation order; addressing by email/name lets the same config work everywhere. Sign into a missing account on a new machine, re-run `chrome-profile list`, key resolves automatically.
 
----
+## Update / Uninstall
 
-## Commands
+```bash
+# Update
+npx skills update chrome-profile                                           # skill files
+bash ~/.claude/skills/chrome-profile/scripts/install.sh                    # CLI shim (idempotent)
 
-```text
-chrome-profile <key> <url>     Open URL in the profile named <key>
-chrome-profile setup           Interactive: discover profiles and write profiles.json
-chrome-profile setup --yes     Non-interactive: accept all auto-derived keys
-chrome-profile setup --shared  Write inside skill dir (NOT recommended; wiped by npx skills update)
-chrome-profile list            Show configured keys and what they resolve to on this machine
-chrome-profile discover        Show all Chrome profiles on this machine (no config needed)
+# Uninstall
+bash ~/.claude/skills/chrome-profile/scripts/uninstall.sh [--purge]        # remove shim (+config if --purge)
+npx skills remove chrome-profile                                           # remove skill files
 ```
 
----
+Windows: substitute `*.cmd` and `/purge`. `profiles.json` survives updates; `--purge` also removes it.
 
-## Cross-machine setup
-
-Profiles directory names (`Profile 1`, `Profile 17`, etc.) are assigned by Chrome in creation order, so the same Google account lives in different directory numbers on different machines. Because this skill resolves by **email**, the same `profiles.json` works on every machine — the CLI reads each machine's `Local State` fresh and resolves emails to local directory names at every invocation.
-
-To set up on a new machine:
-
-1. Install the skill (see above) and run `scripts/install.sh`.
-2. Sign in to your Google accounts in Chrome (one profile per account, the normal way).
-3. Run `chrome-profile list` and confirm each key resolves to a `Profile XX`. If a key shows `UNRESOLVED on this machine`, you haven't signed in to that account yet on this machine — do that in Chrome's UI, then re-run.
-
----
-
-## How agents use this skill
-
-Most usage is from inside an AI agent (Claude Code, Cursor, etc.) with `chrome-devtools-mcp` configured. The agent's natural flow when the user asks something like *"open the PR in my work profile and summarize it"*:
-
-```text
-1. Run the shell command:
-   chrome-profile work "https://github.com/org/repo/pull/123"
-
-2. Use the MCP to find the new tab:
-   list_pages  →  find tab whose url contains "cdp-profile=work"
-
-3. Operate on it via select_page + evaluate_script / navigate_page / click.
-
-4. The tab is in the work profile's CDP context, so all cookies, login state, and
-   extensions for that profile are live. The agent gets real signed-in behavior.
-```
-
-The `SKILL.md` in this repo is what trains the agent to follow this flow. When the agent is loaded with Anthropic Agent Skills (Claude Code) or compatible runtimes, `SKILL.md`'s description triggers auto-activation.
-
----
-
-## Limitations and known issues
+## Limits
 
 | Limit | Detail |
 |---|---|
-| `chrome-devtools-mcp` config cannot pre-pin a profile | The `--browserUrl` attach mode ignores `--chromeArg=--profile-directory=` because Chrome's SingletonLock routes the launch to the existing process. Runtime is the only knob. |
-| `new_page` MCP tool opens in default profile | Always use `chrome-profile <key> <url>` to materialize a tab in a non-default profile. Do NOT use `new_page` for cross-profile tab creation. |
-| Fragment-stripping SPAs | If a target URL is a JS app that overwrites `location.hash`, the marker may disappear after navigation. Mitigation: read `pageId` immediately after `list_pages` and hold it; do not re-match by fragment later. |
-| Copy-profile workarounds | Cookie encryption is path-bound on macOS — copying to a different user-data-dir breaks login. See `references/architecture.md`. |
+| Can't pre-pin a profile via MCP config | Profile selection is runtime-only. Use the CLI. |
+| MCP `new_page` opens in default profile | Use `chrome-profile <key> <url>` for non-default profiles. |
+| Fragment-stripping SPAs | If a JS app overwrites `location.hash`, hold the `pageId` from your first `list_pages` and don't re-match by fragment. |
+| Copy-profile workarounds | Don't. macOS Keychain / Windows ABE bind cookie decryption to the original user-data-dir path. See [`references/architecture.md`](references/architecture.md). |
 
 More in [`references/troubleshooting.md`](references/troubleshooting.md).
-
----
-
-## Update
-
-The skill has two install layers — both have deterministic update commands:
-
-```bash
-# Layer 1: skill files (pulls the latest from this repo's default branch)
-npx skills update chrome-profile
-
-# Layer 2: the chrome-profile shim on PATH (regenerates the shim, idempotent)
-bash ~/.claude/skills/chrome-profile/scripts/install.sh           # macOS / Linux
-"%USERPROFILE%\.agents\skills\chrome-profile\scripts\install.cmd" :: Windows
-```
-
-Re-running `install.sh` / `install.cmd` is idempotent — safe any time, no flags needed. Your `profiles.json` is preserved across updates (it lives outside the skill dir, or is .gitignored if inside).
-
-## Uninstall
-
-Deterministic teardown is two steps (mirrors install):
-
-```bash
-# Step 1: remove the chrome-profile shim from PATH
-bash ~/.claude/skills/chrome-profile/scripts/uninstall.sh         # macOS / Linux
-"%USERPROFILE%\.agents\skills\chrome-profile\scripts\uninstall.cmd" :: Windows
-
-# Step 2: remove the skill files
-npx skills remove chrome-profile
-```
-
-By default the uninstall scripts preserve your `profiles.json` so reinstalling later restores your key mappings. Pass `--purge` (Unix) / `/purge` (Windows) to wipe the config too.
-
-Nothing else is touched — no Chrome data, no cookies, no profiles. The skill only ever wrote two locations (the shim and the optional `~/.config/chrome-profile/`), both of which the uninstall script knows about.
 
 ## Development
 
 ```bash
-# Run tests
-pytest
-
-# Validate skill metadata (requires npx, optional)
-npx skills-ref validate ./SKILL.md
+pytest                              # 22 tests, no third-party deps
+npx skills-ref validate ./SKILL.md  # optional metadata check
 ```
-
-The Python CLI has no third-party dependencies. Tests use only the standard library + pytest.
-
----
 
 ## License
 
 MIT. See [`LICENSE`](LICENSE).
 
----
-
 ## Security
 
-This skill executes only one external command (your installed Chrome binary, located via standard OS paths). It reads (never writes) Chrome's `Local State` for profile metadata. It does NOT read or write your cookies, passwords, or any profile-internal data, and does NOT send anything over the network.
-
-When invoked with a URL, the URL is passed verbatim to Chrome. Agents should treat URLs from untrusted upstream as instructions to verify with the user before running.
-
-Report security issues privately via GitHub Security Advisories on this repo.
+The skill executes only `chrome.exe` / `Google Chrome`, reads `Local State` once for profile enumeration, and writes a `profiles.json` you control. It does not touch cookies, passwords, or network. URLs are passed verbatim to Chrome; agents should verify any URL from untrusted upstream before running. Report issues via GitHub Security Advisories.
