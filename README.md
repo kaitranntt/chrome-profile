@@ -29,12 +29,43 @@ See [`references/architecture.md`](references/architecture.md) for the full why.
 
 ## Prerequisites
 
-- Google Chrome (stable channel). The skill works on macOS, Linux, Windows.
+- Google Chrome (stable channel, version 144+). The skill works on macOS, Linux, Windows.
 - Python 3.9 or newer on PATH (`python3 --version`).
-- [`chrome-devtools-mcp`](https://github.com/ChromeDevTools/chrome-devtools-mcp) already configured in your AI agent (Claude Code, Cursor, etc.). The agent needs to be attached to your live Chrome via the official MCP's "Allow remote debugging" gesture.
-- `$HOME/.local/bin` on PATH (or set `PREFIX=/some/path` when running `install.sh`).
+- Node.js + `npx` on PATH (used by the next item).
+- [`chrome-devtools-mcp`](https://github.com/ChromeDevTools/chrome-devtools-mcp) configured in your AI-agent client (Claude Code, Codex, Cursor, etc.). See below — this skill assumes the MCP is already wired up; it does NOT configure it for you.
+- `$HOME/.local/bin` on PATH (Unix) or `%USERPROFILE%\.local\bin` (Windows). Or set `PREFIX=/some/path` when running the installer.
 
 The skill does NOT bundle Chrome, does NOT manage your `chrome-devtools-mcp` configuration, and does NOT touch your existing profiles' data.
+
+### Setting up `chrome-devtools-mcp`
+
+The skill's runtime workflow assumes your agent can call `chrome-devtools-mcp` tools (`list_pages`, `select_page`, `evaluate_script`, etc.) against your live Chrome. Pick the snippet for your client:
+
+**Claude Code:**
+```bash
+claude mcp add -s user chrome-devtools npx -- chrome-devtools-mcp@latest --autoConnect --channel=stable
+claude mcp get chrome-devtools     # verify Status: Connected
+```
+
+**Codex CLI:**
+```bash
+codex mcp add chrome-devtools -- npx chrome-devtools-mcp@latest --autoConnect --channel=stable
+codex mcp list                     # verify chrome-devtools is enabled
+```
+
+**Cursor / other MCP clients:** add an `mcpServers` entry equivalent to:
+```json
+{
+  "mcpServers": {
+    "chrome-devtools": {
+      "command": "npx",
+      "args": ["chrome-devtools-mcp@latest", "--autoConnect", "--channel=stable"]
+    }
+  }
+}
+```
+
+The `--autoConnect` flag attaches to your **running** Chrome (144+) via a runtime "Allow remote debugging" prompt the first time you use it. Click Allow (or "Always Allow") to make it persistent. After that, your manual Chrome use AND the agent's CDP access work side-by-side from the same process — no second Chrome, no debug port to manage, no copy-profile gymnastics.
 
 ---
 
