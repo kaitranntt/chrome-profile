@@ -8,7 +8,7 @@ REM Usage:
 REM   install.cmd                              install to %USERPROFILE%\.local\bin
 REM   set PREFIX=C:\tools && install.cmd       custom prefix
 
-setlocal EnableDelayedExpansion
+setlocal
 
 set "SCRIPT_DIR=%~dp0"
 if "%SCRIPT_DIR:~-1%"=="\" set "SCRIPT_DIR=%SCRIPT_DIR:~0,-1%"
