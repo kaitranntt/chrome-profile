@@ -65,7 +65,23 @@ codex mcp list                     # verify chrome-devtools is enabled
 }
 ```
 
-The `--autoConnect` flag attaches to your **running** Chrome (144+) via a runtime "Allow remote debugging" prompt the first time you use it. Click Allow (or "Always Allow") to make it persistent. After that, your manual Chrome use AND the agent's CDP access work side-by-side from the same process — no second Chrome, no debug port to manage, no copy-profile gymnastics.
+The `--autoConnect` flag attaches to your **running** Chrome (144+). It needs TWO one-time things from you the first time:
+
+1. **Enable the remote-debugging server inside Chrome** (this is a Chrome-side switch, NOT a flag):
+
+   1. Open Chrome.
+   2. Go to `chrome://inspect/#remote-debugging` (paste into address bar).
+   3. Toggle on the option to enable remote debugging on the running Chrome instance.
+
+   Without this, `--autoConnect` has nothing to attach to and the MCP will fail to find Chrome.
+
+2. **Approve the agent's first request via the "Allow remote debugging" prompt.**
+
+   The first time your agent (Claude Code / Codex / etc.) actually calls a `chrome-devtools-mcp` tool, Chrome pops a modal asking you to allow this specific debugging session. Click **Allow** (or **Always Allow** for persistence). Future agent invocations skip the prompt if you chose Always Allow.
+
+After both gates are passed once, your manual Chrome use and the agent's CDP access live side-by-side in the same Chrome process — no second Chrome, no debug port to manage, no copy-profile gymnastics.
+
+> Note: if you'd rather attach by an explicit debug-port URL (instead of `--autoConnect`), launch Chrome with `--remote-debugging-port=9222 --user-data-dir=<a-non-default-dir>` and configure the MCP with `--browserUrl http://127.0.0.1:9222`. Chrome 136+ blocks `--remote-debugging-port` against the default user-data-dir, so `--autoConnect` is the smoother path for everyday use.
 
 ---
 
