@@ -51,8 +51,16 @@ This installs the skill into the standard Agent-Skills directory for your client
 After install, run the bundled installer to put the `chrome-profile` CLI on `$PATH`:
 
 ```bash
+# macOS / Linux
 bash ~/.claude/skills/chrome-profile-cdp/scripts/install.sh
 ```
+
+```cmd
+:: Windows (cmd.exe or PowerShell)
+"%USERPROFILE%\.agents\skills\chrome-profile-cdp\scripts\install.cmd"
+```
+
+On Windows the shim lands in `%USERPROFILE%\.local\bin\`. If that's not on PATH yet, the installer prints the `setx` command to add it (run once, then reopen the terminal).
 
 ### Manual
 
