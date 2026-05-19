@@ -1,5 +1,5 @@
 ---
-name: chrome-profile-cdp
+name: chrome-profile
 description: Deterministically target a specific Chrome user profile when driving the browser through chrome-devtools-mcp. Use this skill whenever the user asks to "automate Chrome in profile X", "open a tab in my work / personal / client Chrome profile", "control multiple Chrome profiles", "switch which Google account the agent uses", or when chrome-devtools-mcp's list_pages returns tabs across profiles and the agent needs to pick the right one. Also use to set this up on a new machine ("install on this Mac/Linux/Windows box", "discover my Chrome profiles"). The skill installs a small `chrome-profile` CLI, resolves profiles by Google account email or display-name pattern (portable across machines, no brittle Profile-number references), and teaches the agent the URL-anchor pattern that makes per-profile targeting reliable.
 license: MIT
 compatibility: Requires Python 3.9+ and Google Chrome (stable). Works on macOS, Linux, Windows.
