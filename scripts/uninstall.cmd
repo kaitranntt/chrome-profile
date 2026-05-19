@@ -4,11 +4,11 @@ REM config on Windows. Mirrors uninstall.sh.
 REM
 REM What this removes:
 REM   - %PREFIX%\bin\chrome-profile.cmd (the shim install.cmd wrote)
-REM   - %APPDATA%\chrome-profile-cdp\profiles.json (only with /purge)
+REM   - %APPDATA%\chrome-profile\profiles.json (only with /purge)
 REM
 REM What this does NOT remove:
 REM   - The skill files themselves under %USERPROFILE%\.agents\skills\.
-REM     Use `npx skills remove chrome-profile-cdp` for that.
+REM     Use `npx skills remove chrome-profile` for that.
 REM   - Chrome data, cookies, or any profile.
 REM
 REM Usage:
@@ -35,7 +35,7 @@ if exist "%SHIM%" (
 
 REM Python's XDG fallback on Windows is %APPDATA% via Path.home()/.config; the
 REM CLI uses ~/.config too, but on Windows that resolves to %USERPROFILE%\.config.
-set "CFG_DIR=%USERPROFILE%\.config\chrome-profile-cdp"
+set "CFG_DIR=%USERPROFILE%\.config\chrome-profile"
 if "%PURGE%"=="1" (
   if exist "%CFG_DIR%" (
     rmdir /S /Q "%CFG_DIR%"
@@ -49,5 +49,5 @@ if "%PURGE%"=="1" (
 
 echo.
 echo [*] To also remove the skill files, run:
-echo     npx skills remove chrome-profile-cdp
+echo     npx skills remove chrome-profile
 endlocal

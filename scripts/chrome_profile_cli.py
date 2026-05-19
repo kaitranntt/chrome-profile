@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""chrome-profile-cdp: Open a URL in a specific Chrome profile via the running Chrome.
+"""chrome-profile: Open a URL in a specific Chrome profile via the running Chrome.
 
 Profile selection is resolved AT RUNTIME from Chrome's Local State by matching the
 Google account email (or a substring of the display name) — never by the brittle
@@ -10,7 +10,7 @@ through chrome-devtools-mcp can find the resulting tab in `list_pages` without
 ambiguity.
 
 Config resolution order (first found wins):
-  1. $XDG_CONFIG_HOME/chrome-profile-cdp/profiles.json   (per-machine override)
+  1. $XDG_CONFIG_HOME/chrome-profile/profiles.json   (per-machine override)
   2. <skill>/profiles.json                                (shared, ships with the skill)
 """
 
@@ -32,7 +32,7 @@ SKILL_DIR = SCRIPT_DIR.parent
 SKILL_CONFIG = SKILL_DIR / "profiles.json"
 LOCAL_CONFIG = (
     Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config"))
-    / "chrome-profile-cdp"
+    / "chrome-profile"
     / "profiles.json"
 )
 

@@ -8,7 +8,7 @@ metadata:
 allowed-tools: Bash
 ---
 
-# chrome-profile-cdp — Deterministic Chrome profile control via chrome-devtools-mcp
+# chrome-profile — Deterministic Chrome profile control via chrome-devtools-mcp
 
 This skill provides the missing primitive: **address a specific Chrome user profile by name** when driving Chrome through `chrome-devtools-mcp`. The official MCP attaches to the whole Chrome browser process and flat-lists tabs across all profiles; it does not expose `browserContextId` or any profile identifier. Without this skill the agent has to guess which tab belongs to which profile. With this skill the agent runs one shell command and identifies the target tab via a URL fragment.
 
@@ -64,7 +64,7 @@ chrome-profile work "https://github.com/your-org/repo/pulls"
 ```
 
 The CLI:
-1. Reads `profiles.json` (per-machine override at `$XDG_CONFIG_HOME/chrome-profile-cdp/profiles.json`, falling back to a `profiles.json` next to the skill).
+1. Reads `profiles.json` (per-machine override at `$XDG_CONFIG_HOME/chrome-profile/profiles.json`, falling back to a `profiles.json` next to the skill).
 2. Looks up `<key>` → spec (typically `{"email": "..."}`).
 3. Reads Chrome's `Local State` and matches the email to the current machine's `Profile XX` directory.
 4. Appends `#cdp-profile=<key>` to the URL (client-only fragment).
@@ -112,14 +112,14 @@ If multiple tabs match the same key (e.g. multiple `cdp-profile=work` from prior
 The skill is portable. On any new machine where Chrome runs and Python 3 is available:
 
 ```bash
-git clone <this-repo-url> ~/.claude/skills/chrome-profile-cdp
-bash ~/.claude/skills/chrome-profile-cdp/scripts/install.sh
+git clone <this-repo-url> ~/.claude/skills/chrome-profile
+bash ~/.claude/skills/chrome-profile/scripts/install.sh
 chrome-profile setup
 ```
 
 If installed via `npx skills add`, the install path is whatever that tool manages.
 
-The profile-key mapping at `profiles.json` (or per-machine override at `$XDG_CONFIG_HOME/chrome-profile-cdp/profiles.json`) is portable because keys map to **emails**, not to per-machine `Profile XX` directory names. The CLI resolves emails to the current machine's directory at every invocation by reading `Local State`.
+The profile-key mapping at `profiles.json` (or per-machine override at `$XDG_CONFIG_HOME/chrome-profile/profiles.json`) is portable because keys map to **emails**, not to per-machine `Profile XX` directory names. The CLI resolves emails to the current machine's directory at every invocation by reading `Local State`.
 
 If `chrome-profile list` shows `-> UNRESOLVED on this machine` for a key, the corresponding Google account is not signed into any Chrome profile on this machine. Sign in via Chrome's UI once and the key will resolve thereafter.
 

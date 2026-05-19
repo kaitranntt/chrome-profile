@@ -3,11 +3,11 @@
 #
 # What this removes:
 #   - $PREFIX/bin/chrome-profile (the shim install.sh wrote)
-#   - $XDG_CONFIG_HOME/chrome-profile-cdp/profiles.json (only with --purge)
+#   - $XDG_CONFIG_HOME/chrome-profile/profiles.json (only with --purge)
 #
 # What this does NOT remove:
-#   - The skill files themselves (under ~/.agents/skills/chrome-profile-cdp/ or
-#     wherever npx skills add put them). Use `npx skills remove chrome-profile-cdp`
+#   - The skill files themselves (under ~/.agents/skills/chrome-profile/ or
+#     wherever npx skills add put them). Use `npx skills remove chrome-profile`
 #     for that.
 #   - Chrome data, cookies, or any profile.
 #
@@ -38,7 +38,7 @@ else
 fi
 
 CFG_HOME="${XDG_CONFIG_HOME:-$HOME/.config}"
-CFG_DIR="$CFG_HOME/chrome-profile-cdp"
+CFG_DIR="$CFG_HOME/chrome-profile"
 if [[ $PURGE -eq 1 ]]; then
   if [[ -d "$CFG_DIR" ]]; then
     rm -rf "$CFG_DIR"
@@ -54,4 +54,4 @@ fi
 
 echo ""
 echo "[*] To also remove the skill files, run:"
-echo "    npx skills remove chrome-profile-cdp"
+echo "    npx skills remove chrome-profile"

@@ -44,7 +44,7 @@ Install Python 3. macOS: `brew install python`. Linux: `apt install python3` / `
 
 ## "Setup interactive prompt is unreadable in a non-TTY environment"
 
-Run with `chrome-profile setup --yes` to accept all auto-derived keys. Then edit `~/.config/chrome-profile-cdp/profiles.json` by hand to rename keys.
+Run with `chrome-profile setup --yes` to accept all auto-derived keys. Then edit `~/.config/chrome-profile/profiles.json` by hand to rename keys.
 
 ## "I run multiple Chrome channels (stable + canary + beta)"
 

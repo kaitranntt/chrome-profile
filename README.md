@@ -1,4 +1,4 @@
-# chrome-profile-cdp
+# chrome-profile
 
 > Deterministic per-profile Chrome control for AI agents driving the browser through [chrome-devtools-mcp](https://github.com/ChromeDevTools/chrome-devtools-mcp).
 
@@ -46,18 +46,18 @@ The skill does NOT bundle Chrome, does NOT manage your `chrome-devtools-mcp` con
 npx skills add <owner>/<this-repo>
 ```
 
-This installs the skill into the standard Agent-Skills directory for your client (Claude Code: `~/.claude/skills/chrome-profile-cdp/`).
+This installs the skill into the standard Agent-Skills directory for your client (Claude Code: `~/.claude/skills/chrome-profile/`).
 
 After install, run the bundled installer to put the `chrome-profile` CLI on `$PATH`:
 
 ```bash
 # macOS / Linux
-bash ~/.claude/skills/chrome-profile-cdp/scripts/install.sh
+bash ~/.claude/skills/chrome-profile/scripts/install.sh
 ```
 
 ```cmd
 :: Windows (cmd.exe or PowerShell)
-"%USERPROFILE%\.agents\skills\chrome-profile-cdp\scripts\install.cmd"
+"%USERPROFILE%\.agents\skills\chrome-profile\scripts\install.cmd"
 ```
 
 On Windows the shim lands in `%USERPROFILE%\.local\bin\`. If that's not on PATH yet, the installer prints the `setx` command to add it (run once, then reopen the terminal).
@@ -65,8 +65,8 @@ On Windows the shim lands in `%USERPROFILE%\.local\bin\`. If that's not on PATH 
 ### Manual
 
 ```bash
-git clone https://github.com/<owner>/<this-repo> ~/.claude/skills/chrome-profile-cdp
-bash ~/.claude/skills/chrome-profile-cdp/scripts/install.sh
+git clone https://github.com/<owner>/<this-repo> ~/.claude/skills/chrome-profile
+bash ~/.claude/skills/chrome-profile/scripts/install.sh
 ```
 
 ---
@@ -102,10 +102,10 @@ After step 4, the agent driving Chrome through `chrome-devtools-mcp` finds the t
 
 The skill reads `profiles.json` from one of two locations (first found wins):
 
-1. `$XDG_CONFIG_HOME/chrome-profile-cdp/profiles.json` (per-machine override, defaults to `~/.config/chrome-profile-cdp/profiles.json`)
+1. `$XDG_CONFIG_HOME/chrome-profile/profiles.json` (per-machine override, defaults to `~/.config/chrome-profile/profiles.json`)
 2. `<skill-dir>/profiles.json` (shared, ships with the skill)
 
-`chrome-profile setup` writes to the per-machine config (`$XDG_CONFIG_HOME/chrome-profile-cdp/profiles.json`) by default — this survives `npx skills update`. Pass `--shared` to write inside the skill directory instead (useful only when you fork this repo and manage `profiles.json` via your own sync setup; otherwise the next `npx skills update` will wipe it).
+`chrome-profile setup` writes to the per-machine config (`$XDG_CONFIG_HOME/chrome-profile/profiles.json`) by default — this survives `npx skills update`. Pass `--shared` to write inside the skill directory instead (useful only when you fork this repo and manage `profiles.json` via your own sync setup; otherwise the next `npx skills update` will wipe it).
 
 A minimal `profiles.json`:
 
@@ -196,11 +196,11 @@ The skill has two install layers — both have deterministic update commands:
 
 ```bash
 # Layer 1: skill files (pulls the latest from this repo's default branch)
-npx skills update chrome-profile-cdp
+npx skills update chrome-profile
 
 # Layer 2: the chrome-profile shim on PATH (regenerates the shim, idempotent)
-bash ~/.claude/skills/chrome-profile-cdp/scripts/install.sh           # macOS / Linux
-"%USERPROFILE%\.agents\skills\chrome-profile-cdp\scripts\install.cmd" :: Windows
+bash ~/.claude/skills/chrome-profile/scripts/install.sh           # macOS / Linux
+"%USERPROFILE%\.agents\skills\chrome-profile\scripts\install.cmd" :: Windows
 ```
 
 Re-running `install.sh` / `install.cmd` is idempotent — safe any time, no flags needed. Your `profiles.json` is preserved across updates (it lives outside the skill dir, or is .gitignored if inside).
@@ -211,16 +211,16 @@ Deterministic teardown is two steps (mirrors install):
 
 ```bash
 # Step 1: remove the chrome-profile shim from PATH
-bash ~/.claude/skills/chrome-profile-cdp/scripts/uninstall.sh         # macOS / Linux
-"%USERPROFILE%\.agents\skills\chrome-profile-cdp\scripts\uninstall.cmd" :: Windows
+bash ~/.claude/skills/chrome-profile/scripts/uninstall.sh         # macOS / Linux
+"%USERPROFILE%\.agents\skills\chrome-profile\scripts\uninstall.cmd" :: Windows
 
 # Step 2: remove the skill files
-npx skills remove chrome-profile-cdp
+npx skills remove chrome-profile
 ```
 
 By default the uninstall scripts preserve your `profiles.json` so reinstalling later restores your key mappings. Pass `--purge` (Unix) / `/purge` (Windows) to wipe the config too.
 
-Nothing else is touched — no Chrome data, no cookies, no profiles. The skill only ever wrote two locations (the shim and the optional `~/.config/chrome-profile-cdp/`), both of which the uninstall script knows about.
+Nothing else is touched — no Chrome data, no cookies, no profiles. The skill only ever wrote two locations (the shim and the optional `~/.config/chrome-profile/`), both of which the uninstall script knows about.
 
 ## Development
 
